@@ -23,17 +23,16 @@ namespace Anagrams
 
         private static Words _dictionary;
         private static Words Dictionary {
-            get { return _dictionary ?? (_dictionary = File.ReadAllLines("linuxwords.txt").ToList()); }
+            get { return _dictionary ?? (_dictionary = File.ReadAllLines("linuxwords.txt")); }
         }
 
-        private static Occurrences WordOccurrences(Word w)
+        private static Occurrences WordOccurrences(Word word)
         {
-            return w
+            return word
                 .ToLower()
                 .GroupBy(c => c)
                 .Select(g => Tuple.Create(g.Key, g.Count()))
-                .OrderBy(p => p.Item1)
-                .ToList();
+                .OrderBy(tuple => tuple.Item1);
         }
 
         private static Occurrences SentenceOccurrences(Words words)
@@ -70,12 +69,11 @@ namespace Anagrams
                         .GroupBy(WordOccurrences)
                         .ToLookup(
                             g => g.Key,
-                            g => g.ToList() as Words,
                             new OccurrencesEqualityComparer());
 
                     _dictionaryByOccurrences = lookup.ToDictionary(
-                        x => x.Key,
-                        x => x.SelectMany(words => words).ToList() as Words,
+                        g => g.Key,
+                        g => g.SelectMany(words => words),
                         new OccurrencesEqualityComparer());
                 }
 
@@ -113,8 +111,8 @@ namespace Anagrams
 
         private static Occurrences Subtract(Occurrences x, Occurrences y)
         {
-            var xm = x.ToDictionary(a => a.Item1, a => a.Item2);
-            var ym = y.ToDictionary(a => a.Item1, a => a.Item2);
+            var xm = x.ToDictionary(tuple => tuple.Item1, tuple => tuple.Item2);
+            var ym = y.ToDictionary(tuple => tuple.Item1, tuple => tuple.Item2);
             var zm = new Dictionary<char, int>();
 
             foreach (var xkvp in xm)
@@ -131,14 +129,13 @@ namespace Anagrams
             return zm
                 .Where(kvp => kvp.Value > 0)
                 .Select(kvp => Tuple.Create(kvp.Key, kvp.Value))
-                .OrderBy(tuple => tuple.Item1)
-                .ToList();
+                .OrderBy(tuple => tuple.Item1);
         }
 
         private static IEnumerable<Sentence> SentenceAnagrams(Sentence sentence)
         {
             var allOccurrences = SentenceOccurrences(sentence);
-            return SentenceAnagramsIter(allOccurrences).ToList();
+            return SentenceAnagramsIter(allOccurrences);
         }
 
         private static IEnumerable<Words> SentenceAnagramsIter(Occurrences occurrences)
