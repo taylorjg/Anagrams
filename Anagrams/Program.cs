@@ -65,16 +65,15 @@ namespace Anagrams
             {
                 if (_dictionaryByOccurrences == null)
                 {
-                    var lookup = Dictionary
-                        .GroupBy(WordOccurrences)
-                        .ToLookup(
+                    var comparer = new OccurrencesEqualityComparer();
+                    _dictionaryByOccurrences = Dictionary
+                        .GroupBy(
+                            WordOccurrences,
+                            comparer)
+                        .ToDictionary(
                             g => g.Key,
-                            new OccurrencesEqualityComparer());
-
-                    _dictionaryByOccurrences = lookup.ToDictionary(
-                        g => g.Key,
-                        g => g.SelectMany(words => words),
-                        new OccurrencesEqualityComparer());
+                            g => g.AsEnumerable(),
+                            comparer);
                 }
 
                 return _dictionaryByOccurrences;
@@ -92,14 +91,15 @@ namespace Anagrams
             }
 
             var hd = occurrencesAsList.First();
-            var tl = occurrencesAsList.Skip(1).ToList();
+            var tl = occurrencesAsList.Skip(1);
             var c = hd.Item1;
             var n = hd.Item2;
+            var tlCombinations = Combinations(tl).ToList();
 
             foreach (var x in Enumerable.Range(0, n + 1))
             {
                 var first = (x > 0) ? Tuple.Create(c, x) : null;
-                foreach (var others in Combinations(tl))
+                foreach (var others in tlCombinations)
                 {
                     var y = new List<Tuple<char, int>>();
                     if (first != null) y.Add(first);
@@ -115,15 +115,12 @@ namespace Anagrams
             var ym = y.ToDictionary(tuple => tuple.Item1, tuple => tuple.Item2);
             var zm = new Dictionary<char, int>();
 
-            foreach (var xkvp in xm)
+            foreach (var kvp in xm)
             {
-                var c = xkvp.Key;
-                var nx = xkvp.Value;
+                var c = kvp.Key;
+                var nx = kvp.Value;
                 int ny;
-                if (ym.TryGetValue(c, out ny))
-                    zm[c] = nx - ny;
-                else
-                    zm[c] = nx;
+                zm[c] = (ym.TryGetValue(c, out ny)) ? nx - ny : nx;
             }
 
             return zm
