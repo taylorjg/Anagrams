@@ -1,6 +1,6 @@
 ## Screenshot
 
-![Screenshot](https://raw.githubusercontent.com/taylorjg/Anagrams/master/Images/Screenshot "Screenshot")
+![Screenshot](https://raw.githubusercontent.com/taylorjg/Anagrams/master/Images/Screenshot.png "Screenshot")
 
 ## References
 
