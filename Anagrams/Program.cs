@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using Word = System.String;
@@ -14,11 +15,41 @@ namespace Anagrams
     {
         private static void Main()
         {
-            var sentenceAnagrams = SentenceAnagrams(new[]{"Yes", "man"});
-            foreach (var sentenceAnagram in sentenceAnagrams)
-            {
-                Console.WriteLine(string.Join(", ", sentenceAnagram));
-            }
+            #pragma warning disable 168
+            Console.WriteLine("Reading word list...");
+            var dummy1 = Dictionary;
+            Console.WriteLine("Done reading word list...");
+
+            Console.WriteLine("Building dictionary...");
+            var dummy2 = DictionaryByOccurrences;
+            Console.WriteLine("Done building dictionary...");
+            #pragma warning restore 168
+
+            var sentence = new[] {"Yes", "man"};
+
+            MeasureFunctionExecutionTime(() =>
+                {
+                    foreach (var anagram in SentenceAnagrams(sentence)) Console.WriteLine(StringJoiner(anagram));
+                });
+
+            MeasureFunctionExecutionTime(() =>
+                {
+                    foreach (var anagram in SentenceAnagramsMemo(sentence)) Console.WriteLine(StringJoiner(anagram));
+                });
+        }
+
+        private static string StringJoiner(IEnumerable<string> strings)
+        {
+            return string.Join(", ", strings);
+        }
+
+        private static void MeasureFunctionExecutionTime(Action action)
+        {
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
+            action();
+            stopwatch.Stop();
+            Console.WriteLine("Elapsed time: {0}.", stopwatch.Elapsed);
         }
 
         private static Words _dictionary;
@@ -132,7 +163,8 @@ namespace Anagrams
         private static IEnumerable<Sentence> SentenceAnagrams(Sentence sentence)
         {
             var allOccurrences = SentenceOccurrences(sentence);
-            return SentenceAnagramsIter(allOccurrences);
+            _sentenceAnagramsIterFunc = RawSentenceAnagramsIterFunc;
+            return _sentenceAnagramsIterFunc(allOccurrences);
         }
 
         private static IEnumerable<Words> SentenceAnagramsIter(Occurrences occurrences)
@@ -151,7 +183,7 @@ namespace Anagrams
                 var remainingOccurrences = Subtract(occurrencesAsList, combinationAsList).ToList();
                 foreach (var word in WordsForCombination(combinationAsList))
                 {
-                    foreach (var innerSentence in SentenceAnagramsIter(remainingOccurrences))
+                    foreach (var innerSentence in _sentenceAnagramsIterFunc(remainingOccurrences))
                     {
                         var sentence = new List<Word> {word};
                         sentence.AddRange(innerSentence);
@@ -165,6 +197,17 @@ namespace Anagrams
         {
             Words words;
             return DictionaryByOccurrences.TryGetValue(occurrences, out words) ? words : Enumerable.Empty<Word>();
+        }
+
+        private static readonly Func<Occurrences, IEnumerable<Words>> RawSentenceAnagramsIterFunc = SentenceAnagramsIter;
+        private static readonly Func<Occurrences, IEnumerable<Words>> MemoizedSentenceAnagramsIterFunc = Memoizer.Memoize(RawSentenceAnagramsIterFunc);
+        private static Func<Occurrences, IEnumerable<Words>> _sentenceAnagramsIterFunc;
+
+        private static IEnumerable<Sentence> SentenceAnagramsMemo(Sentence sentence)
+        {
+            var allOccurrences = SentenceOccurrences(sentence);
+            _sentenceAnagramsIterFunc = MemoizedSentenceAnagramsIterFunc;
+            return _sentenceAnagramsIterFunc(allOccurrences);
         }
     }
 }
